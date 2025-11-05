@@ -1,7 +1,6 @@
 const Applicant = require("../models/Applicant");
 const Internship = require("../models/Internship");
 const bcrypt = require("bcryptjs");
-const { v4: uuidv4 } = require("uuid");
 const {sendEmail} = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
 
