@@ -183,7 +183,7 @@ exports.registerApplicant = async (req, res) => {
     // 2️⃣ Generate Offer letter (Flask) and send from HR
     (async () => {
       try {
-        console.log("⏳ Generating offer letter for:", email);
+        console.log("⏳ Generating offer letter ");
 
         const response = await axios.post(
           `${process.env.FLASK_API_URL}/generate-offer-letter`,

@@ -14,7 +14,6 @@ const internshipRoutes = require('./routes/internshipRoutes');
 const certificateRoutes = require("./routes/certificates");
 const feedbackRoutes = require("./routes/feedbackRoutes");
 const { startScheduler } = require('./jobs/scheduler');
-const paymentRoutes = require("./routes/paymentRoutes");
 const internshipFeeRoutes = require('./routes/internshipFeeRoutes');
 const whyChooseUsRoutes = require('./routes/whyChooseUsRoutes');
 const testinomialRoutes = require('./routes/testimonialRoutes');
@@ -48,7 +47,6 @@ app.use("/api/uploads", require("./routes/downloads"));
 app.use("/api/feedback", feedbackRoutes);
 
 // Payment
-app.use("/api/payment", paymentRoutes);
 
 // Fee
 app.use("/api/internship-fees", internshipFeeRoutes)
