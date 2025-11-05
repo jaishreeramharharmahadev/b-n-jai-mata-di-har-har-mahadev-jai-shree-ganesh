@@ -1,7 +1,6 @@
 const path = require("path");
 const fs = require("fs");
 const axios = require("axios");
-const { v4: uuidv4 } = require("uuid");
 
 const Applicant = require("../models/Applicant");
 const Certificate = require("../models/Certificate");
