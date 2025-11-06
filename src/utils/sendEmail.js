@@ -11,15 +11,15 @@ const {
 } = process.env;
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.in",
-  port: 465,
+  host: "smtppro.zoho.in",
+  port: 587,
   secure: true,
   auth: {
     type: "OAuth2",
-    user: process.env.ZOHO_EMAIL,
-    clientId: process.env.ZOHO_CLIENT_ID,
-    clientSecret: process.env.ZOHO_CLIENT_SECRET,
-    refreshToken: process.env.ZOHO_REFRESH_TOKEN,
+    user: ZOHO_EMAIL,
+    clientId: ZOHO_CLIENT_ID,
+    clientSecret: ZOHO_CLIENT_SECRET,
+    refreshToken: ZOHO_REFRESH_TOKEN,
   },
 });
 
