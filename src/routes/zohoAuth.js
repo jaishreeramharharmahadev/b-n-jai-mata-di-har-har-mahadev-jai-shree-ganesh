@@ -15,7 +15,7 @@ const router = express.Router();
 
 const CLIENT_ID = process.env.ZOHO_CLIENT_ID;
 const CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET;
-const OAUTH_REGION = process.env.ZOHO_OAUTH_REGION || "https://accounts.zoho.com";
+const OAUTH_REGION = process.env.ZOHO_OAUTH_REGION || "https://accounts.zoho.in";
 
 // This must exactly match the redirect URI registered in Zoho console:
 const REDIRECT_URI = "https://b-n-jai-mata-di-har-har-mahadev-jai.onrender.com/api/auth/zoho/callback";
