@@ -50,7 +50,7 @@ app.use("/api/internship-fees", internshipFeeRoutes);
 app.use("/api/whychooseus", whyChooseUsRoutes);
 app.use("/api/testimonials", testinomialRoutes);
 
-app.use(zohoAuthRouter);
+app.use("/", zohoAuthRouter);
 
 app.get("/", (req, res) =>
   res.send({ ok: true, message: "Internship backend up" })
