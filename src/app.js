@@ -16,6 +16,7 @@ const { startScheduler } = require("./jobs/scheduler");
 const internshipFeeRoutes = require("./routes/internshipFeeRoutes");
 const whyChooseUsRoutes = require("./routes/whyChooseUsRoutes");
 const testinomialRoutes = require("./routes/testimonialRoutes");
+const zohoAuthRouter = require('./routes/zohoAuth');
 
 const app = express();
 
@@ -48,6 +49,8 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/internship-fees", internshipFeeRoutes);
 app.use("/api/whychooseus", whyChooseUsRoutes);
 app.use("/api/testimonials", testinomialRoutes);
+
+app.use(zohoAuthRouter);
 
 app.get("/", (req, res) =>
   res.send({ ok: true, message: "Internship backend up" })
