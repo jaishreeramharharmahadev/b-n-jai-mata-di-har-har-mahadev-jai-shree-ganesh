@@ -1,7 +1,7 @@
 const Applicant = require("../models/Applicant");
 const Internship = require("../models/Internship");
 const bcrypt = require("bcryptjs");
-const {sendEmail} = require("../utils/sendEmail");
+const sendEmail = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
 
 const axios = require("axios");
@@ -174,7 +174,7 @@ exports.registerApplicant = async (req, res) => {
       to: email,
       subject: subject1,
       html: html1,
-      from: process.env.ZOHO_FROM_SUPPORT,
+      from: process.env.BREVO_FROM_SUPPORT,
     });
 
     console.log("✅ Support (thank-you) email sent");
@@ -214,7 +214,7 @@ exports.registerApplicant = async (req, res) => {
               contentType: "application/pdf",
             },
           ],
-          from: process.env.ZOHO_FROM_HR,
+          from: process.env.BREVO_FROM_HR,
           preferAuth: "hr",
         });
 

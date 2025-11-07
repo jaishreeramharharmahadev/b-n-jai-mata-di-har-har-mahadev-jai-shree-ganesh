@@ -1,42 +1,46 @@
-// src/utils/sendEmail.js
-const axios = require("axios");
+import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
 
 /**
- * Send email via Brevo API (works on Render)
+ * Send email using Brevo
+ * Supports both simple emails and emails with attachments (like PDF offer letter)
  */
-async function sendEmail({ to, subject, html, attachments, from }) {
+export const sendEmail = async ({ to, subject, html, attachments, from, preferAuth }) => {
   try {
-    const payload = {
-      sender: { name: "GT Technovation", email: from },
-      to: [{ email: to }],
-      subject,
-      htmlContent: html,
-    };
-
-    if (attachments && attachments.length > 0) {
-      payload.attachment = attachments.map((a) => ({
-        name: a.filename,
-        content: a.content, // must be base64
-      }));
-    }
+    const senderEmail =
+      from ||
+      (preferAuth === "hr" ? process.env.BREVO_FROM_HR : process.env.BREVO_FROM_SUPPORT);
 
     const response = await axios.post(
       "https://api.brevo.com/v3/smtp/email",
-      payload,
+      {
+        sender: {
+          name: process.env.BREVO_FROM_NAME,
+          email: senderEmail,
+        },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+        attachments: attachments
+          ? attachments.map((file) => ({
+              name: file.filename,
+              content: file.content, // base64 encoded
+            }))
+          : undefined,
+      },
       {
         headers: {
+          accept: "application/json",
           "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json",
+          "content-type": "application/json",
         },
       }
     );
 
-    console.log(`✅ Brevo email sent to ${to}`);
-    return response.data;
-  } catch (err) {
-    console.error("❌ Brevo email failed:", err.response?.data || err.message);
-    throw new Error(err.message || "Email send failed");
+    console.log("✅ Email sent successfully via Brevo:", response.data);
+  } catch (error) {
+    console.error("❌ Brevo email failed:", error.response?.data || error.message);
+    throw new Error("Email sending failed: " + (error.response?.data?.message || error.message));
   }
-}
-
-module.exports = { sendEmail };
+};
