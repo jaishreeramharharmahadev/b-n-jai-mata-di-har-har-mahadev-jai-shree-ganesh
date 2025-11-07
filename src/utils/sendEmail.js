@@ -1,10 +1,12 @@
+
+// utils/sendEmail.js
 import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
 
 /**
  * Send email using Brevo
- * Supports both simple emails and emails with attachments (like PDF offer letter)
+ * Supports both normal and attachment emails
  */
 export const sendEmail = async ({ to, subject, html, attachments, from, preferAuth }) => {
   try {
@@ -12,31 +14,38 @@ export const sendEmail = async ({ to, subject, html, attachments, from, preferAu
       from ||
       (preferAuth === "hr" ? process.env.BREVO_FROM_HR : process.env.BREVO_FROM_SUPPORT);
 
-    const response = await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        sender: {
-          name: process.env.BREVO_FROM_NAME,
-          email: senderEmail,
-        },
-        to: [{ email: to }],
-        subject,
-        htmlContent: html,
-        attachments: attachments
-          ? attachments.map((file) => ({
-              name: file.filename,
-              content: file.content, // base64 encoded
-            }))
-          : undefined,
+    const payload = {
+      sender: {
+        name: process.env.BREVO_FROM_NAME,
+        email: senderEmail,
       },
-      {
-        headers: {
-          accept: "application/json",
-          "api-key": process.env.BREVO_API_KEY,
-          "content-type": "application/json",
-        },
-      }
-    );
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    };
+
+    if (attachments && attachments.length > 0) {
+      payload.attachment = attachments.map((file) => {
+        // Convert Buffer → base64 if needed
+        const base64Content =
+          Buffer.isBuffer(file.content)
+            ? file.content.toString("base64")
+            : file.content.replace(/^data:.*;base64,/, "");
+
+        return {
+          name: file.filename,
+          content: base64Content,
+        };
+      });
+    }
+
+    const response = await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+      headers: {
+        accept: "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+    });
 
     console.log("✅ Email sent successfully via Brevo:", response.data);
   } catch (error) {

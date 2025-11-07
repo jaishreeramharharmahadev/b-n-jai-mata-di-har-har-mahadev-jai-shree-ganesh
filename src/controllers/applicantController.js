@@ -15,6 +15,8 @@ const ProjectSubmission = require("../models/ProjectSubmission");
 const { ensureTimeBasedUnlocks } = require("../helpers/timeUnlockHelpers");
 const { upload, ASSIGNMENT_DIR, PROJECT_DIR } = require("../utils/multer");
 
+const { generateOfferLetterPDF } = require("../services/pdfService"); // adjust path if needed
+
 const buildApplicantLearningPath = (masterPath) => {
   if (!Array.isArray(masterPath) || masterPath.length === 0) {
     // fallback to 4 empty weeks if master not provided
@@ -215,23 +217,35 @@ exports.registerApplicant = async (req, res) => {
     // 2️⃣ Generate Offer letter (Flask) and send from HR
     (async () => {
       try {
-        console.log("⏳ Generating offer letter ");
+        console.log("⏳ Generating offer letter (Node) for:", email);
 
-        const response = await axios.post(
-          `${process.env.FLASK_API_URL}/generate-offer-letter`,
-          { fullName, domain, uniqueId },
-          { responseType: "arraybuffer" }
-        );
+        // prepare data structure expected by your pdfService
+        const pdfData = {
+          full_name: fullName,
+          domain,
+          unique_id: uniqueId,
+          internship_duration: duration,
+          start_date: startDate.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
+          stipend: "Unpaid",
+        };
 
-        // write temp file, convert to base64 (or pass buffer)
-        const pdfBuffer = Buffer.from(response.data);
-        const pdfBase64 = pdfBuffer.toString("base64");
+        // generateOfferLetterPDF should return an absolute path to the generated PDF file
+        const pdfPath = await generateOfferLetterPDF(pdfData);
 
+        if (!pdfPath || !fs.existsSync(pdfPath)) {
+          throw new Error("PDF generation failed or file missing");
+        }
+
+        // read file (Buffer) and optionally log size
+        const pdfBuffer = fs.readFileSync(pdfPath);
+        console.log(`📄 Offer PDF ready (${pdfBuffer.length} bytes): ${pdfPath}`);
+
+        // send via Brevo; your sendEmail helper should convert Buffer -> base64
         const subject2 = `Your Internship Offer Letter - ${domain}`;
         const html2 = `
           <div style="font-family:Arial,sans-serif;">
             <h2>Congratulations ${fullName} 🎉</h2>
-            <p>Your offer letter for the internship in <b>${domain}</b> is attached.</p>
+            <p>Your offer letter for the <b>${domain}</b> internship is attached.</p>
             <p>— Team TechnoPhile (HR)</p>
           </div>
         `;
@@ -243,21 +257,25 @@ exports.registerApplicant = async (req, res) => {
           attachments: [
             {
               filename: `${uniqueId}_offer_letter.pdf`,
-              content: pdfBase64,
+              content: pdfBuffer, // Buffer (sendEmail should handle Buffer -> base64)
+              contentType: "application/pdf",
             },
           ],
           from: process.env.BREVO_FROM_HR,
           preferAuth: "hr",
         });
 
+        // mark as sent only if email succeeded
         applicant.offerSent = true;
         await applicant.save();
-        console.log("📩 Offer letter sent from HR");
+        console.log("📩 Offer letter sent and applicant updated:", email);
+
+        // optional: cleanup generated PDF file after sending
+        // try { fs.unlinkSync(pdfPath); } catch (e) { console.warn("Cleanup failed:", e.message); }
+
       } catch (err) {
-        console.error(
-          "❌ Error generating/sending offer letter:",
-          err && err.message ? err.message : err
-        );
+        console.error("❌ Offer generation/send (background) failed for", email, err.message || err);
+        // Keep applicant in DB; you can implement retry logic, alerting, or mark a flag for manual review.
       }
     })();
 
