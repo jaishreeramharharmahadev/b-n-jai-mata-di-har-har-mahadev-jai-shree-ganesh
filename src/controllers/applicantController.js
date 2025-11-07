@@ -137,7 +137,7 @@ exports.registerApplicant = async (req, res) => {
     try {
       internship = await Internship.findOne({ domain: domain });
     } catch (e) {
-      console.warn("No internship template found for domain:", domain);
+      console.warn("No internship template found for domain:");
     }
 
     const learningPath = internship
@@ -212,13 +212,9 @@ exports.registerApplicant = async (req, res) => {
       from: process.env.BREVO_FROM_SUPPORT,
     });
 
-    console.log("✅ Support (thank-you) email sent");
-
     // 2️⃣ Generate Offer letter (Flask) and send from HR
     (async () => {
       try {
-        console.log("⏳ Generating offer letter (Node) for:", email);
-
         // prepare data structure expected by your pdfService
         const pdfData = {
           full_name: fullName,
@@ -238,7 +234,6 @@ exports.registerApplicant = async (req, res) => {
 
         // read file (Buffer) and optionally log size
         const pdfBuffer = fs.readFileSync(pdfPath);
-        console.log(`📄 Offer PDF ready (${pdfBuffer.length} bytes): ${pdfPath}`);
 
         // send via Brevo; your sendEmail helper should convert Buffer -> base64
         const subject2 = `Your Internship Offer Letter - ${domain}`;
@@ -268,13 +263,12 @@ exports.registerApplicant = async (req, res) => {
         // mark as sent only if email succeeded
         applicant.offerSent = true;
         await applicant.save();
-        console.log("📩 Offer letter sent and applicant updated:", email);
 
         // optional: cleanup generated PDF file after sending
         // try { fs.unlinkSync(pdfPath); } catch (e) { console.warn("Cleanup failed:", e.message); }
 
       } catch (err) {
-        console.error("❌ Offer generation/send (background) failed for", email, err.message || err);
+        console.error("❌ Offer generation/send (background) failed for");
         // Keep applicant in DB; you can implement retry logic, alerting, or mark a flag for manual review.
       }
     })();
