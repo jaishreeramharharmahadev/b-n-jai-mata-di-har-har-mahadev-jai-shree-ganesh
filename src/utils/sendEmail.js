@@ -63,4 +63,4 @@ async function sendEmail(options) {
   }
 }
 
-module.exports = sendEmail;
+module.exports = { sendEmail };
