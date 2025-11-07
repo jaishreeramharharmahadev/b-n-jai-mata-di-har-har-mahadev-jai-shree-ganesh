@@ -185,17 +185,12 @@ async function verify(req, res) {
   try {
     let certificateNumber = req.params.certificateNumber;
     if (!certificateNumber)
-      return res
-        .status(400)
-        .json({ valid: false, message: "certificateNumber required" });
+      return res.status(400).json({ valid: false, message: "certificateNumber required" });
     certificateNumber = certificateNumber.toString().trim();
     const cert = await Certificate.findOne({
       certificateNumber: { $regex: `^${certificateNumber}$`, $options: "i" },
     }).populate("applicant", "uniqueId fullName email");
-    if (!cert)
-      return res
-        .status(404)
-        .json({ valid: false, message: "Certificate not found" });
+    if (!cert) return res.status(404).json({ valid: false, message: "Certificate not found" });
     return res.json({
       valid: true,
       certificateNumber: cert.certificateNumber,
