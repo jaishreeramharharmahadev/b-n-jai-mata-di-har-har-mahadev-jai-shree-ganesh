@@ -1,7 +1,7 @@
 const Applicant = require("../models/Applicant");
 const Internship = require("../models/Internship");
 const bcrypt = require("bcryptjs");
-const {sendEmail} = require("../utils/sendEmail");
+const { sendEmail } = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
 
 const axios = require("axios");
@@ -14,7 +14,6 @@ const { ensureLearningPathState } = require("../helpers/learningPathHelpers");
 const ProjectSubmission = require("../models/ProjectSubmission");
 const { ensureTimeBasedUnlocks } = require("../helpers/timeUnlockHelpers");
 const { upload, ASSIGNMENT_DIR, PROJECT_DIR } = require("../utils/multer");
-
 
 const buildApplicantLearningPath = (masterPath) => {
   if (!Array.isArray(masterPath) || masterPath.length === 0) {
@@ -105,12 +104,22 @@ exports.registerApplicant = async (req, res) => {
     } = req.body;
 
     // validation
-    if (!duration || !fullName || !email || !phone || !dob || !college || !address || !password) {
+    if (
+      !duration ||
+      !fullName ||
+      !email ||
+      !phone ||
+      !dob ||
+      !college ||
+      !address ||
+      !password
+    ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
     const existing = await Applicant.findOne({ email: email.toLowerCase() });
-    if (existing) return res.status(409).json({ message: "Email already registered" });
+    if (existing)
+      return res.status(409).json({ message: "Email already registered" });
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
@@ -132,10 +141,34 @@ exports.registerApplicant = async (req, res) => {
     const learningPath = internship
       ? buildApplicantLearningPath(internship.learningPath)
       : [
-          { weekNumber: 1, title: "Week 1", content: "", locked: true, completed: false },
-          { weekNumber: 2, title: "Week 2", content: "", locked: true, completed: false },
-          { weekNumber: 3, title: "Week 3", content: "", locked: true, completed: false },
-          { weekNumber: 4, title: "Week 4", content: "", locked: true, completed: false },
+          {
+            weekNumber: 1,
+            title: "Week 1",
+            content: "",
+            locked: true,
+            completed: false,
+          },
+          {
+            weekNumber: 2,
+            title: "Week 2",
+            content: "",
+            locked: true,
+            completed: false,
+          },
+          {
+            weekNumber: 3,
+            title: "Week 3",
+            content: "",
+            locked: true,
+            completed: false,
+          },
+          {
+            weekNumber: 4,
+            title: "Week 4",
+            content: "",
+            locked: true,
+            completed: false,
+          },
         ];
 
     const applicant = await Applicant.create({
@@ -211,7 +244,6 @@ exports.registerApplicant = async (req, res) => {
             {
               filename: `${uniqueId}_offer_letter.pdf`,
               content: pdfBase64,
-              contentType: "application/pdf",
             },
           ],
           from: process.env.BREVO_FROM_HR,
@@ -222,19 +254,25 @@ exports.registerApplicant = async (req, res) => {
         await applicant.save();
         console.log("📩 Offer letter sent from HR");
       } catch (err) {
-        console.error("❌ Error generating/sending offer letter:", err && err.message ? err.message : err);
+        console.error(
+          "❌ Error generating/sending offer letter:",
+          err && err.message ? err.message : err
+        );
       }
     })();
 
     // Response to client
     res.status(201).json({
-      message: "Application submitted successfully. Thank-you email sent; offer letter will follow from HR.",
+      message:
+        "Application submitted successfully. Thank-you email sent; offer letter will follow from HR.",
       applicant,
       uniqueId,
     });
   } catch (error) {
     console.error("Error registering applicant:", error);
-    res.status(500).json({ message: "Server Error", error: error.message || error });
+    res
+      .status(500)
+      .json({ message: "Server Error", error: error.message || error });
   }
 };
 
@@ -413,8 +451,13 @@ exports.submitProject = [
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const { projectName, projectDescription, liveLink, githubLink, linkedinLink } =
-        req.body;
+      const {
+        projectName,
+        projectDescription,
+        liveLink,
+        githubLink,
+        linkedinLink,
+      } = req.body;
       const consentAccuracy =
         req.body.consentAccuracy === "true" ||
         req.body.consentAccuracy === true;
@@ -486,8 +529,9 @@ exports.getMe = async (req, res, next) => {
       .populate("internshipRef", "domain skills description")
       .populate({
         path: "projects",
-        select: "projectName projectDescription liveLink githubLink linkedinLink submissionDate",
-        options: { sort: { submissionDate: -1 } }
+        select:
+          "projectName projectDescription liveLink githubLink linkedinLink submissionDate",
+        options: { sort: { submissionDate: -1 } },
       });
 
     if (!applicant) return res.status(404).json({ message: "Not found" });
