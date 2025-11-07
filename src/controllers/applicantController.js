@@ -1,7 +1,7 @@
 const Applicant = require("../models/Applicant");
 const Internship = require("../models/Internship");
 const bcrypt = require("bcryptjs");
-const sendEmail = require("../utils/sendEmail");
+const {sendEmail} = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
 
 const axios = require("axios");
