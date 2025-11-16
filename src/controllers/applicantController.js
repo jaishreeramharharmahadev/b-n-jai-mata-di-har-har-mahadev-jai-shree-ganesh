@@ -211,7 +211,7 @@ exports.registerApplicant = async (req, res) => {
 
         <p>Thank you for submitting your application for the <strong>${domain}</strong> internship at <strong>GT Technovation</strong>. We appreciate your interest in joining our organization.</p>
 
-        <p>Your application has been successfully received and is currently under review.</p>
+        <p>Your application has been successfully received.</p>
 
         <p>
           <strong>Applicant ID:</strong> ${uniqueId}<br/>
@@ -221,8 +221,6 @@ exports.registerApplicant = async (req, res) => {
         <p>Please keep the above Applicant ID for future reference regarding your internship process and documentation.</p>
 
         <p>If we require any additional details or clarifications, our team will reach out to you via email.</p>
-
-        <br/>
 
         <p>Best regards,<br/>
         <strong>GT Technovation</strong></p>
@@ -284,12 +282,11 @@ exports.registerApplicant = async (req, res) => {
             <p>Please find your official offer letter attached to this email. It contains important details regarding your internship role, duration, responsibilities, and guidelines.</p>
 
             <p>Kindly review the offer letter thoroughly and keep it for future reference.</p>
-
-            <br/>
-
+            
             <p>Congratulations once again, and welcome to GT Technovation!</p>
+            
 
-            <p>Warm regards,<br/>
+            <p>Best regards,<br/>
             <strong>HR</strong><br/>
             <strong>GT Technovation</strong></p>
           </div>
