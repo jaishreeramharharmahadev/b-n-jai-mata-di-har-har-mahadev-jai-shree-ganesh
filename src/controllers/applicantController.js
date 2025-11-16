@@ -214,7 +214,7 @@ exports.registerApplicant = async (req, res) => {
         <p>Your application has been successfully received and is currently under review.</p>
 
         <p>
-          <strong>Unique Applicant ID:</strong> ${uniqueId}<br/>
+          <strong>Applicant ID:</strong> ${uniqueId}<br/>
           <strong>Internship Start Date:</strong> ${startDate.toDateString()}
         </p>
 
