@@ -195,13 +195,37 @@ exports.registerApplicant = async (req, res) => {
 
     // 1️⃣ Thank-you email from SUPPORT
     const subject1 = `Internship Application - ${domain}`;
+    // const html1 = `
+    //   <div style="font-family:Arial,sans-serif;line-height:1.5;">
+    //     <h2>Hello ${fullName},</h2>
+    //     <p><strong>Thanks for applying to our ${domain} internship.</strong></p>
+    //     <p>Your unique ID: <strong>${uniqueId}</strong></p>
+    //     <p>Start date: <strong>${startDate.toDateString()}</strong></p>
+    //     <p>— Team TechnoPhile (Support)</p>
+    //   </div>
+    // `;
+
     const html1 = `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;">
-        <h2>Hello ${fullName},</h2>
-        <p><strong>Thanks for applying to our ${domain} internship.</strong></p>
-        <p>Your unique ID: <strong>${uniqueId}</strong></p>
-        <p>Start date: <strong>${startDate.toDateString()}</strong></p>
-        <p>— Team TechnoPhile (Support)</p>
+      <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
+        <p style="font-size:16px;">Dear ${fullName},</p>
+
+        <p>Thank you for submitting your application for the <strong>${domain}</strong> internship at <strong>GT Technovation</strong>. We appreciate your interest in joining our organization.</p>
+
+        <p>Your application has been successfully received and is currently under review.</p>
+
+        <p>
+          <strong>Unique Applicant ID:</strong> ${uniqueId}<br/>
+          <strong>Internship Start Date:</strong> ${startDate.toDateString()}
+        </p>
+
+        <p>Please keep the above Applicant ID for future reference regarding your internship process and documentation.</p>
+
+        <p>If we require any additional details or clarifications, our team will reach out to you via email.</p>
+
+        <br/>
+
+        <p>Best regards,<br/>
+        <strong>GT Technovation</strong></p>
       </div>
     `;
 
@@ -221,7 +245,11 @@ exports.registerApplicant = async (req, res) => {
           domain,
           unique_id: uniqueId,
           internship_duration: duration,
-          start_date: startDate.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
+          start_date: startDate.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          }),
           stipend: "Unpaid",
         };
 
@@ -237,11 +265,33 @@ exports.registerApplicant = async (req, res) => {
 
         // send via Brevo; your sendEmail helper should convert Buffer -> base64
         const subject2 = `Your Internship Offer Letter - ${domain}`;
+        // const html2 = `
+        //   <div style="font-family:Arial,sans-serif;">
+        //     <h2>Congratulations ${fullName} 🎉</h2>
+        //     <p>Your offer letter for the <b>${domain}</b> internship is attached.</p>
+        //     <p>— Team TechnoPhile (HR)</p>
+        //   </div>
+        // `;
+
         const html2 = `
-          <div style="font-family:Arial,sans-serif;">
-            <h2>Congratulations ${fullName} 🎉</h2>
-            <p>Your offer letter for the <b>${domain}</b> internship is attached.</p>
-            <p>— Team TechnoPhile (HR)</p>
+          <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
+            <p style="font-size:16px;">Dear ${fullName},</p>
+
+            <p>We are pleased to inform you that you have been selected for the <strong>${domain}</strong> internship position at <strong>GT Technovation</strong>.</p>
+
+            <p>Your internship is scheduled to begin on <strong>${startDate.toDateString()}</strong>. Please ensure that you are available and prepared from this date onward.</p>
+
+            <p>Please find your official offer letter attached to this email. It contains important details regarding your internship role, duration, responsibilities, and guidelines.</p>
+
+            <p>Kindly review the offer letter thoroughly and keep it for future reference.</p>
+
+            <br/>
+
+            <p>Congratulations once again, and welcome to GT Technovation!</p>
+
+            <p>Warm regards,<br/>
+            <strong>HR</strong><br/>
+            <strong>GT Technovation</strong></p>
           </div>
         `;
 
@@ -266,7 +316,6 @@ exports.registerApplicant = async (req, res) => {
 
         // optional: cleanup generated PDF file after sending
         // try { fs.unlinkSync(pdfPath); } catch (e) { console.warn("Cleanup failed:", e.message); }
-
       } catch (err) {
         console.error("❌ Offer generation/send (background) failed for");
         // Keep applicant in DB; you can implement retry logic, alerting, or mark a flag for manual review.

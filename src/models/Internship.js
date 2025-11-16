@@ -30,6 +30,7 @@ const InternshipSchema = new mongoose.Schema({
   spots: { type: String },
   location: { type: String },
   image: { type: String },
+  image2: { type: String },
   rating: { type: String }, // New field for ratings
   description: { type: String },
   skills: { type: [String], default: [] },

@@ -44,14 +44,11 @@ async function generateForApplicantService(uniqueId) {
     durationText: applicant.duration || "",
     issueDate: new Date().toLocaleDateString(),
     directorName: process.env.CERT_DIRECTOR_NAME || "Priyanshu Tiwari",
-    verifyUrl:
-      (process.env.CLIENT_URL) +
-      `/verify/${certificateNumber}`,
+    verifyUrl: process.env.CLIENT_URL + `/verify/${certificateNumber}`,
   };
 
   // Call Flask microservice to generate PDF
-  const pyUrl =
-    `${process.env.FLASK_API_URL}/generate-certificate`;
+  const pyUrl = `${process.env.FLASK_API_URL}/generate-certificate`;
   const resp = await axios.post(pyUrl, payload, {
     responseType: "arraybuffer",
     timeout: 120000,
@@ -81,9 +78,33 @@ async function generateForApplicantService(uniqueId) {
   await sendEmail({
     to: applicant.email,
     subject: `🎓 Your Internship Certificate — ${applicant.domain || ""}`,
-    html: `<p>Hi ${applicant.fullName},</p><p>Congratulations — your internship certificate is attached. Certificate No: <strong>${certificateNumber}</strong>.</p><p>— Team TechnoPhile</p>`,
+    html: `
+    <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
+      <p style="font-size:16px;">Dear ${applicant.fullName},</p>
+
+      <p>We are pleased to inform you that you have successfully completed your internship at <strong>GT Technovation</strong>. Your official internship completion certificate has been attached with this email.</p>
+
+      <p>
+        <strong>Certificate Number:</strong> ${certificateNumber}<br/>
+        <strong>Domain:</strong> ${applicant.domain}
+      </p>
+
+      <p>We appreciate your dedication, hard work, and commitment throughout the internship period. We hope the experience gained during this program helps you in your future academic and professional journey.</p>
+
+      <br/>
+
+      <p>Wishing you continued success ahead.</p>
+
+      <p>Warm regards,<br/>
+      <strong>GT Technovation HR Team</strong></p>
+    </div>
+  `,
     attachments: [
-      { filename, content: pdfBase64, contentType: "application/pdf" },
+      {
+        filename: filename,
+        content: pdfBase64,
+        contentType: "application/pdf",
+      },
     ],
   });
 
@@ -185,12 +206,17 @@ async function verify(req, res) {
   try {
     let certificateNumber = req.params.certificateNumber;
     if (!certificateNumber)
-      return res.status(400).json({ valid: false, message: "certificateNumber required" });
+      return res
+        .status(400)
+        .json({ valid: false, message: "certificateNumber required" });
     certificateNumber = certificateNumber.toString().trim();
     const cert = await Certificate.findOne({
       certificateNumber: { $regex: `^${certificateNumber}$`, $options: "i" },
     }).populate("applicant", "uniqueId fullName email");
-    if (!cert) return res.status(404).json({ valid: false, message: "Certificate not found" });
+    if (!cert)
+      return res
+        .status(404)
+        .json({ valid: false, message: "Certificate not found" });
     return res.json({
       valid: true,
       certificateNumber: cert.certificateNumber,
