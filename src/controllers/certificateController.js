@@ -1,12 +1,14 @@
 const path = require("path");
 const fs = require("fs");
-const axios = require("axios");
+const { v4: uuidv4 } = require("uuid");
 
 const Applicant = require("../models/Applicant");
 const Certificate = require("../models/Certificate");
 const { sendEmail } = require("../utils/sendEmail");
 
-const PDF_ROOT = path.join(__dirname, "../generated_pdfs");
+const { generateCertificatePDF } = require("../services/pdfService");
+
+const PDF_ROOT = path.join(__dirname, "..", "..", "generated_pdfs");
 const CERT_DIR = path.join(PDF_ROOT, "certificates");
 fs.mkdirSync(CERT_DIR, { recursive: true });
 
@@ -17,16 +19,12 @@ function generateCertificateNumber() {
 }
 
 async function generateForApplicantService(uniqueId) {
-  // find applicant
   const applicant = await Applicant.findOne({ uniqueId });
   if (!applicant) throw new Error("Applicant not found: " + uniqueId);
 
-  // Prevent double-generation
   if (applicant.certificateGenerated) {
-    // return existing certificate if present
     const existing = await Certificate.findOne({ applicant: applicant._id });
     if (existing) return existing;
-    // else continue to create, but still set unique sane behaviour
   }
 
   const certificateNumber = generateCertificateNumber();
@@ -44,22 +42,39 @@ async function generateForApplicantService(uniqueId) {
     durationText: applicant.duration || "",
     issueDate: new Date().toLocaleDateString(),
     directorName: process.env.CERT_DIRECTOR_NAME || "Priyanshu Tiwari",
-    verifyUrl: process.env.CLIENT_URL + `/verify/${certificateNumber}`,
+    verifyUrl: (process.env.CLIENT_URL || "").replace(/\/$/, "") + `/verify/${certificateNumber}`,
   };
 
-  // Call Flask microservice to generate PDF
-  const pyUrl = `${process.env.FLASK_API_URL}/generate-certificate`;
-  const resp = await axios.post(pyUrl, payload, {
-    responseType: "arraybuffer",
-    timeout: 120000,
-  });
+  let returned = await generateCertificatePDF(payload);
 
-  // Save PDF
   const filename = `${certificateNumber}_certificate.pdf`;
-  const savePath = path.join(CERT_DIR, filename);
-  fs.writeFileSync(savePath, Buffer.from(resp.data));
+  let savePath;
+  if (Buffer.isBuffer(returned)) {
+    savePath = path.join(CERT_DIR, filename);
+    fs.writeFileSync(savePath, returned);
+  } else if (typeof returned === "string") {
+    savePath = returned;
+    if (!path.isAbsolute(savePath)) {
+      savePath = path.join(__dirname, "..", returned);
+    }
+    const destFilename = `${certificateNumber}_certificate.pdf`;
+    const destPath = path.join(CERT_DIR, destFilename);
+    if (path.resolve(savePath) !== path.resolve(destPath)) {
+      try {
+        fs.copyFileSync(savePath, destPath);
+        savePath = destPath;
+      } catch (e) {
+        console.warn("Could not copy generated PDF to certificates folder:", e.message);
+      }
+    }
+  } else {
+    throw new Error("generateCertificatePDF returned unsupported type");
+  }
 
-  // Create certificate DB record
+  if (!fs.existsSync(savePath)) {
+    throw new Error("Certificate PDF missing after generation: " + savePath);
+  }
+
   const certDoc = await Certificate.create({
     certificateNumber,
     applicant: applicant._id,
@@ -73,8 +88,9 @@ async function generateForApplicantService(uniqueId) {
     generatedAt: new Date(),
   });
 
-  // Email the PDF
-  const pdfBase64 = fs.readFileSync(savePath).toString("base64");
+  const pdfBuffer = fs.readFileSync(savePath);
+  const pdfBase64 = pdfBuffer.toString("base64");
+
   await sendEmail({
     to: applicant.email,
     subject: `🎓 Your Internship Certificate — ${applicant.domain || ""}`,
@@ -108,7 +124,6 @@ async function generateForApplicantService(uniqueId) {
     ],
   });
 
-  // update certificate sentAt and applicant flags
   certDoc.sentAt = new Date();
   await certDoc.save();
 
@@ -119,7 +134,6 @@ async function generateForApplicantService(uniqueId) {
   return certDoc;
 }
 
-// Controller wrapper for route: POST /api/certificates/generate/:uniqueId
 async function generateForApplicantRoute(req, res) {
   try {
     const uniqueId = req.params.uniqueId;
@@ -134,7 +148,6 @@ async function generateForApplicantRoute(req, res) {
   }
 }
 
-// Controller wrapper for download and verify (you likely already have these)
 async function downloadByUniqueId(req, res) {
   try {
     const uniqueId = req.params.uniqueId;
@@ -142,36 +155,25 @@ async function downloadByUniqueId(req, res) {
       return res.status(400).json({ message: "uniqueId param missing" });
     }
 
-    // Find applicant by uniqueId
     const applicant = await Applicant.findOne({ uniqueId });
     if (!applicant) {
       console.warn(`[download] Applicant not found for uniqueId=${uniqueId}`);
       return res.status(404).json({ message: "Applicant not found" });
     }
 
-    // Find certificate document
     const cert = await Certificate.findOne({ applicant: applicant._id });
     if (!cert || !cert.filePath) {
-      console.warn(
-        `[download] Certificate doc not found for applicant=${uniqueId}`
-      );
+      console.warn(`[download] Certificate doc not found for applicant=${uniqueId}`);
       return res.status(404).json({ message: "Certificate not available" });
     }
 
     // Resolve absolute path
-    const filePath = path.isAbsolute(cert.filePath)
-      ? cert.filePath
-      : path.join(__dirname, "..", cert.filePath);
+    const filePath = path.isAbsolute(cert.filePath) ? cert.filePath : path.join(__dirname, "..", cert.filePath);
     if (!fs.existsSync(filePath)) {
-      console.warn(
-        `[download] Certificate file missing on disk. expected=${filePath}`
-      );
-      return res
-        .status(404)
-        .json({ message: "Certificate file missing on server" });
+      console.warn(`[download] Certificate file missing on disk. expected=${filePath}`);
+      return res.status(404).json({ message: "Certificate file missing on server" });
     }
 
-    // Stream file with explicit headers (content-disposition)
     const stat = fs.statSync(filePath);
     const filename = `${cert.certificateNumber}_certificate.pdf`;
 
@@ -179,9 +181,7 @@ async function downloadByUniqueId(req, res) {
     res.setHeader("Content-Length", stat.size);
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(
-        filename
-      )}`
+      `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`
     );
 
     const stream = fs.createReadStream(filePath);
@@ -189,16 +189,12 @@ async function downloadByUniqueId(req, res) {
 
     stream.on("error", (err) => {
       console.error("[download] stream error:", err);
-      if (!res.headersSent)
-        return res.status(500).json({ message: "Error streaming file" });
-      // if headers already sent, just destroy
+      if (!res.headersSent) return res.status(500).json({ message: "Error streaming file" });
       res.destroy();
     });
   } catch (err) {
     console.error("downloadByUniqueId error:", err);
-    return res
-      .status(500)
-      .json({ message: "Server error", error: err.message });
+    return res.status(500).json({ message: "Server error", error: err.message });
   }
 }
 
@@ -206,17 +202,12 @@ async function verify(req, res) {
   try {
     let certificateNumber = req.params.certificateNumber;
     if (!certificateNumber)
-      return res
-        .status(400)
-        .json({ valid: false, message: "certificateNumber required" });
+      return res.status(400).json({ valid: false, message: "certificateNumber required" });
     certificateNumber = certificateNumber.toString().trim();
     const cert = await Certificate.findOne({
       certificateNumber: { $regex: `^${certificateNumber}$`, $options: "i" },
     }).populate("applicant", "uniqueId fullName email");
-    if (!cert)
-      return res
-        .status(404)
-        .json({ valid: false, message: "Certificate not found" });
+    if (!cert) return res.status(404).json({ valid: false, message: "Certificate not found" });
     return res.json({
       valid: true,
       certificateNumber: cert.certificateNumber,
