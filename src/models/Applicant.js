@@ -1,3 +1,5 @@
+
+
 const mongoose = require("mongoose");
 
 const AssignmentSubmissionSchema = new mongoose.Schema({
@@ -50,7 +52,10 @@ const ApplicantSchema = new mongoose.Schema({
   github: { type: String },
   passwordHash: { type: String, required: true },
   agree: { type: Boolean, default: false },
+
+  // OLD payment flag
   paymentChecked: { type: Boolean, default: false },
+
   emailConfirmed: { type: Boolean, default: false },
   emailToken: { type: String },
   createdAt: { type: Date, default: Date.now },
@@ -60,24 +65,41 @@ const ApplicantSchema = new mongoose.Schema({
   internshipRef: { type: mongoose.Schema.Types.ObjectId, ref: "Internship" },
   learningPath: { type: [WeekProgressSchema], default: [] },
 
-  // email flags & logs (ADDED)
-  offerSent: { type: Boolean, default: false },       // <-- added
+  // email flags & logs
+  offerSent: { type: Boolean, default: false },
   offerSentAt: { type: Date },
-  certificateGenerated: { type: Boolean, default: false }, // you already had
-  certificateSent: { type: Boolean, default: false }, // <-- added
+  certificateGenerated: { type: Boolean, default: false },
+  certificateSent: { type: Boolean, default: false },
   certificateSentAt: { type: Date },
-
-  // email audit trail
-  emailLog: { type: [EmailLogSchema], default: [] },  // <-- optional but useful
+  emailLog: { type: [EmailLogSchema], default: [] },
 
   // projects
   projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "ProjectSubmission" }],
 
   // Feedback form
-  feedbackSubmitted: { type: Boolean, default: false }
+  feedbackSubmitted: { type: Boolean, default: false },
+
+  // 🔐 Payment info (NEW)
+  payment: {
+    status: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
+    default: "pending",
+    },
+    provider: { type: String, default: "razorpay" },
+    orderId: { type: String },
+    paymentId: { type: String },         // Razorpay payment id
+    amount: { type: Number },            // in rupees
+    currency: { type: String, default: "INR" },
+    method: { type: String },            // card, upi, netbanking, wallet, emi, ...
+    paidAt: { type: Date },
+    paymentDoc: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" }, // ref to payment collection
+  },
+
+  // link to pricing config
+  feeConfig: { type: mongoose.Schema.Types.ObjectId, ref: "InternshipFee" },
 });
 
-// optional: index to quickly find due certificates
 ApplicantSchema.index({ endDate: 1, certificateSent: 1 });
 
 module.exports = mongoose.model("Applicant", ApplicantSchema);

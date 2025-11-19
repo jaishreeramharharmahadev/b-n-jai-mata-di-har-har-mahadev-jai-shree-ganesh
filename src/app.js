@@ -17,6 +17,7 @@ const internshipFeeRoutes = require("./routes/internshipFeeRoutes");
 const whyChooseUsRoutes = require("./routes/whyChooseUsRoutes");
 const testinomialRoutes = require("./routes/testimonialRoutes");
 const zohoAuthRouter = require('./routes/zohoAuth');
+const paymentRoutes = require("./routes/paymentRoutes");
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/api/uploads", require("./routes/downloads"));
 app.use("/api/feedback", feedbackRoutes);
 
 // Payment
+app.use("/api", paymentRoutes);
 
 // Fee
 app.use("/api/internship-fees", internshipFeeRoutes);

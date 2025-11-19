@@ -3,7 +3,7 @@ const router = express.Router();
 const applicantController = require("../controllers/applicantController");
 const auth = require("../middlewares/auth"); // your auth middleware
 
-router.post("/register", applicantController.registerApplicant);
+router.post("/register", applicantController.registerApplicantCore);
 // router.post("/create-demo", applicantController.createApplicant);
 
 // get week content

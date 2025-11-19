@@ -88,130 +88,98 @@ const buildApplicantLearningPath = (masterPath) => {
 };
 
 // Register applicant when clicking "Pay" button
-exports.registerApplicant = async (req, res) => {
-  try {
-    const {
-      duration,
-      fullName,
-      email,
-      phone,
-      dob,
-      college,
-      address,
-      domain,
-      linkedin,
-      github,
-      password,
-      agree,
-    } = req.body;
+const UID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-    // validation
-    if (
-      !duration ||
-      !fullName ||
-      !email ||
-      !phone ||
-      !dob ||
-      !college ||
-      !address ||
-      !password
-    ) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
+function randomUID(length = 6) {
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += UID_CHARS.charAt(Math.floor(Math.random() * UID_CHARS.length));
+  }
+  return result;
+}
 
-    const existing = await Applicant.findOne({ email: email.toLowerCase() });
-    if (existing)
-      return res.status(409).json({ message: "Email already registered" });
+// Generate Unique ID with DB uniqueness check
+async function generateUniqueId() {
+  let uid, exists;
+  do {
+    uid = "GT" + randomUID(6);
+    exists = await Applicant.findOne({ uniqueId: uid });
+  } while (exists);
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+  return uid;
+}
 
-    const uniqueId = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const createdAt = new Date();
-    const startDate = addDays(createdAt, 2);
-    const days = parseDurationToDays(duration);
-    const endDate = days > 0 ? addDays(startDate, days) : null;
+// ▶ FINAL Improved Core Applicant Creation
+exports.registerApplicantCore = async (applicantData) => {
+  const {
+    duration,
+    fullName,
+    email,
+    phone,
+    dob,
+    college,
+    address,
+    domain,
+    linkedin,
+    github,
+    passwordHash,
+    agree,
+  } = applicantData;
 
-    // optional internship lookup
-    let internship = null;
-    try {
-      internship = await Internship.findOne({ domain: domain });
-    } catch (e) {
-      console.warn("No internship template found for domain:");
-    }
+  let existing = await Applicant.findOne({ email: email.toLowerCase() });
+  if (existing) return existing;
 
-    const learningPath = internship
-      ? buildApplicantLearningPath(internship.learningPath)
-      : [
-          {
-            weekNumber: 1,
-            title: "Week 1",
-            content: "",
-            locked: true,
-            completed: false,
-          },
-          {
-            weekNumber: 2,
-            title: "Week 2",
-            content: "",
-            locked: true,
-            completed: false,
-          },
-          {
-            weekNumber: 3,
-            title: "Week 3",
-            content: "",
-            locked: true,
-            completed: false,
-          },
-          {
-            weekNumber: 4,
-            title: "Week 4",
-            content: "",
-            locked: true,
-            completed: false,
-          },
-        ];
+  const uniqueId = await generateUniqueId();
+  const createdAt = new Date();
+  const startDate = addDays(createdAt, 2);
+  const days = parseDurationToDays(duration);
+  const endDate = days > 0 ? addDays(startDate, days) : null;
 
-    const applicant = await Applicant.create({
-      duration,
-      fullName,
-      email: email.toLowerCase(),
-      phone,
-      dob,
-      college,
-      address,
-      domain,
-      linkedin,
-      github,
-      passwordHash,
-      agree: !!agree,
-      uniqueId,
-      startDate,
-      endDate,
-      internshipRef: internship ? internship._id : undefined,
-      learningPath,
-    });
+  // Fetch Internship Learning Path (if exists)
+  let internship = await Internship.findOne({ domain });
+  const learningPath = internship
+    ? buildApplicantLearningPath(internship.learningPath)
+    : buildApplicantLearningPath([]);
 
-    // 1️⃣ Thank-you email from SUPPORT
-    const subject1 = `Internship Application - ${domain}`;
-    // const html1 = `
-    //   <div style="font-family:Arial,sans-serif;line-height:1.5;">
-    //     <h2>Hello ${fullName},</h2>
-    //     <p><strong>Thanks for applying to our ${domain} internship.</strong></p>
-    //     <p>Your unique ID: <strong>${uniqueId}</strong></p>
-    //     <p>Start date: <strong>${startDate.toDateString()}</strong></p>
-    //     <p>— Team TechnoPhile (Support)</p>
-    //   </div>
-    // `;
+  const applicant = await Applicant.create({
+    duration,
+    fullName,
+    email: email.toLowerCase(),
+    phone,
+    dob,
+    college,
+    address,
+    domain,
+    linkedin,
+    github,
+    passwordHash,
+    agree: !!agree,
+    uniqueId,
+    startDate,
+    endDate,
+    internshipRef: internship ? internship._id : undefined,
+    learningPath,
+    paymentChecked: true,
+  });
 
-    const html1 = `
+  return applicant;
+};
+
+// ▶ Emails after successful registration
+exports.sendAfterRegistrationEmails = async (applicant) => {
+  const { fullName, email, duration, domain, uniqueId, startDate } = applicant;
+
+  // THANK YOU EMAIL
+  await sendEmail({
+    to: email,
+    subject: `Internship Application - ${domain}`,
+    html: `
       <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
         <p style="font-size:16px;">Dear ${fullName},</p>
 
         <p>Thank you for submitting your application for the <strong>${domain}</strong> internship at <strong>GT Technovation</strong>. We appreciate your interest in joining our organization.</p>
 
-        <p>Your application has been successfully received.</p>
+        <p>Your application has been successfully received and is currently under review.</p>
 
         <p>
           <strong>Applicant ID:</strong> ${uniqueId}<br/>
@@ -222,56 +190,34 @@ exports.registerApplicant = async (req, res) => {
 
         <p>If we require any additional details or clarifications, our team will reach out to you via email.</p>
 
+        <br/>
         <p>Best regards,<br/>
         <strong>GT Technovation</strong></p>
       </div>
-    `;
+    `,
+    from: process.env.BREVO_FROM_SUPPORT,
+  });
 
-    await sendEmail({
-      to: email,
-      subject: subject1,
-      html: html1,
-      from: process.env.BREVO_FROM_SUPPORT,
-    });
+  console.log("📩 Support email sent");
 
-    // 2️⃣ Generate Offer letter (Flask) and send from HR
-    (async () => {
-      try {
-        // prepare data structure expected by your pdfService
-        const pdfData = {
-          full_name: fullName,
-          domain,
-          unique_id: uniqueId,
-          internship_duration: duration,
-          start_date: startDate.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
-          }),
-          stipend: "Unpaid",
-        };
+  // OFFER LETTER in Background
+  (async () => {
+    try {
+      const pdfPath = await generateOfferLetterPDF({
+        full_name: fullName,
+        domain,
+        unique_id: uniqueId,
+        internship_duration: duration,
+        start_date: startDate.toLocaleDateString("en-GB"),
+        stipend: "Unpaid",
+      });
 
-        // generateOfferLetterPDF should return an absolute path to the generated PDF file
-        const pdfPath = await generateOfferLetterPDF(pdfData);
+      const pdfBuffer = fs.readFileSync(pdfPath);
 
-        if (!pdfPath || !fs.existsSync(pdfPath)) {
-          throw new Error("PDF generation failed or file missing");
-        }
-
-        // read file (Buffer) and optionally log size
-        const pdfBuffer = fs.readFileSync(pdfPath);
-
-        // send via Brevo; your sendEmail helper should convert Buffer -> base64
-        const subject2 = `Your Internship Offer Letter - ${domain}`;
-        // const html2 = `
-        //   <div style="font-family:Arial,sans-serif;">
-        //     <h2>Congratulations ${fullName} 🎉</h2>
-        //     <p>Your offer letter for the <b>${domain}</b> internship is attached.</p>
-        //     <p>— Team TechnoPhile (HR)</p>
-        //   </div>
-        // `;
-
-        const html2 = `
+      await sendEmail({
+        to: email,
+        subject: `Your Internship Offer Letter - ${domain}`,
+        html: `
           <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
             <p style="font-size:16px;">Dear ${fullName},</p>
 
@@ -282,56 +228,33 @@ exports.registerApplicant = async (req, res) => {
             <p>Please find your official offer letter attached to this email. It contains important details regarding your internship role, duration, responsibilities, and guidelines.</p>
 
             <p>Kindly review the offer letter thoroughly and keep it for future reference.</p>
-            
+
             <p>Congratulations once again, and welcome to GT Technovation!</p>
             
-
-            <p>Best regards,<br/>
+            <br/>
+            <p>Warm regards,<br/>
             <strong>HR</strong><br/>
             <strong>GT Technovation</strong></p>
           </div>
-        `;
+        `,
+        attachments: [
+          {
+            filename: `${uniqueId}_offer_letter.pdf`,
+            content: pdfBuffer,
+            contentType: "application/pdf",
+          },
+        ],
+        from: process.env.BREVO_FROM_HR,
+        preferAuth: "hr",
+      });
 
-        await sendEmail({
-          to: email,
-          subject: subject2,
-          html: html2,
-          attachments: [
-            {
-              filename: `${uniqueId}_offer_letter.pdf`,
-              content: pdfBuffer, // Buffer (sendEmail should handle Buffer -> base64)
-              contentType: "application/pdf",
-            },
-          ],
-          from: process.env.BREVO_FROM_HR,
-          preferAuth: "hr",
-        });
-
-        // mark as sent only if email succeeded
-        applicant.offerSent = true;
-        await applicant.save();
-
-        // optional: cleanup generated PDF file after sending
-        // try { fs.unlinkSync(pdfPath); } catch (e) { console.warn("Cleanup failed:", e.message); }
-      } catch (err) {
-        console.error("❌ Offer generation/send (background) failed for");
-        // Keep applicant in DB; you can implement retry logic, alerting, or mark a flag for manual review.
-      }
-    })();
-
-    // Response to client
-    res.status(201).json({
-      message:
-        "Application submitted successfully. Thank-you email sent; offer letter will follow from HR.",
-      applicant,
-      uniqueId,
-    });
-  } catch (error) {
-    console.error("Error registering applicant:", error);
-    res
-      .status(500)
-      .json({ message: "Server Error", error: error.message || error });
-  }
+      applicant.offerSent = true;
+      await applicant.save();
+      console.log("📄 Offer letter sent");
+    } catch (error) {
+      console.error("Offer email failed:", error.message);
+    }
+  })();
 };
 
 // ====== GET week content (enforce locking & compute states) ======
