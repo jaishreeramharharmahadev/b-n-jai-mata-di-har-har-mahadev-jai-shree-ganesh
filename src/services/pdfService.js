@@ -1,8 +1,9 @@
-const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
-const fs = require('fs');
-const path = require('path');
-const { format } = require('date-fns');
-const qr = require('qr-image');
+const { PDFDocument, rgb, StandardFonts } = require("pdf-lib");
+const fs = require("fs");
+const path = require("path");
+const { format } = require("date-fns");
+const qr = require("qr-image");
+const fontkit = require("fontkit");
 
 async function generateOfferLetterPDF(data) {
   try {
@@ -252,8 +253,6 @@ async function generateCertificatePDF(data) {
     const PDF_FOLDER = path.join(__dirname, "generated_pdfs");
     const FONT_FOLDER = path.join(__dirname, "fonts");
 
-    
-
     [TEMPLATE_FOLDER, PDF_FOLDER, FONT_FOLDER].forEach((dir) => {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     });
@@ -263,9 +262,9 @@ async function generateCertificatePDF(data) {
       throw new Error("Certificate template not found");
 
     const templateBytes = fs.readFileSync(templatePath);
-const pdfDoc = await PDFDocument.load(templateBytes);
+    const pdfDoc = await PDFDocument.load(templateBytes);
 
-pdfDoc.registerFontkit(fontkit);
+    pdfDoc.registerFontkit(fontkit);
 
     const page = pdfDoc.getPages()[0];
     const { width, height } = page.getSize();
@@ -283,14 +282,35 @@ pdfDoc.registerFontkit(fontkit);
     const bodyColor = rgb(25 / 255, 36 / 255, 28 / 255);
     const darkTeal = rgb(0 / 255, 85 / 255, 87 / 255);
 
-    const formatDate = (d) =>
-      d && !isNaN(new Date(d)) ? format(new Date(d), "dd/MM/yyyy") : "";
+    const formatDate = (d) => {
+      if (!d) return "";
 
-    const normalizeDuration = (d) =>
-      d ? d.replace(/Month/gi, "month") : "";
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d;
+
+      let date = new Date(d);
+
+      if (isNaN(date.getTime())) {
+        const parts = d.split(/[-/]/);
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            date = new Date(parts[0], parts[1] - 1, parts[2]);
+          } else {
+            date = new Date(parts[2], parts[1] - 1, parts[0]);
+          }
+        }
+      }
+
+      if (isNaN(date.getTime())) return "";
+
+      return format(date, "dd/MM/yyyy");
+    };
+
+    const normalizeDuration = (d) => (d ? d.replace(/Month/gi, "month") : "");
 
     const fullName = data.fullName || "Intern Name";
-    const duration = normalizeDuration(data.duration || data.durationText || "");
+    const duration = normalizeDuration(
+      data.duration || data.durationText || ""
+    );
     const domain = data.domain || data.designation || "";
     const startDate = formatDate(data.startDate);
     const endDate = formatDate(data.endDate);
@@ -314,7 +334,7 @@ pdfDoc.registerFontkit(fontkit);
     const subW = helvetica.widthOfTextAtSize(subtitle, subSize);
     page.drawText(subtitle, {
       x: (width - subW) / 2,
-      y: height - 205,
+      y: height - 185,
       size: subSize,
       font: helvetica,
       color: bodyColor,
@@ -365,7 +385,7 @@ pdfDoc.registerFontkit(fontkit);
     const dateSeg = [
       { t: "at ", b: false },
       { t: "GT Technovation ", b: true },
-      { t: "from ", b: false },
+      { t: " from ", b: false },
       { t: startDate, b: true },
       { t: " to ", b: false },
       { t: endDate, b: true },
@@ -433,7 +453,7 @@ pdfDoc.registerFontkit(fontkit);
       const cinTxt = `Certificate No.: ${certificateNumber}`;
       page.drawText(cinTxt, {
         x: (width - helveticaBold.widthOfTextAtSize(cinTxt, 12)) / 2,
-        y: 120,
+        y: 150,
         size: 12,
         font: helveticaBold,
         color: bodyColor,
@@ -446,7 +466,7 @@ pdfDoc.registerFontkit(fontkit);
       );
       page.drawImage(qrImg, {
         x: (width - 70) / 2,
-        y: 40,
+        y: 70,
         width: 70,
         height: 70,
       });
