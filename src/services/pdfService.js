@@ -244,218 +244,235 @@ async function generateOfferLetterFromScratch(data) {
   return outputPath;
 }
 
+
+
 async function generateCertificatePDF(data) {
   try {
-    const TEMPLATE_FOLDER = path.join(__dirname, 'templates');
-    const PDF_FOLDER = path.join(__dirname, 'generated_pdfs');
+    const TEMPLATE_FOLDER = path.join(__dirname, "templates");
+    const PDF_FOLDER = path.join(__dirname, "generated_pdfs");
+    const FONT_FOLDER = path.join(__dirname, "fonts");
 
-    [TEMPLATE_FOLDER, PDF_FOLDER].forEach(dir => {
+    
+
+    [TEMPLATE_FOLDER, PDF_FOLDER, FONT_FOLDER].forEach((dir) => {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     });
 
     const templatePath = path.join(TEMPLATE_FOLDER, "certificate_template.pdf");
-    if (!fs.existsSync(templatePath)) throw new Error('Certificate template not found');
+    if (!fs.existsSync(templatePath))
+      throw new Error("Certificate template not found");
 
     const templateBytes = fs.readFileSync(templatePath);
-    const pdfDoc = await PDFDocument.load(templateBytes);
-    const pages = pdfDoc.getPages();
-    const page = pages[0];
+const pdfDoc = await PDFDocument.load(templateBytes);
+
+pdfDoc.registerFontkit(fontkit);
+
+    const page = pdfDoc.getPages()[0];
     const { width, height } = page.getSize();
 
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const helveticaOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
-    const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-    const nameFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    const colorHex = rgb(25 / 255, 36 / 255, 28 / 255);
+    const customFontPath = path.join(
+      FONT_FOLDER,
+      "GreatVibes-Wmr4.ttf"
+    );
+    const customFontBytes = fs.readFileSync(customFontPath);
+    const customFont = await pdfDoc.embedFont(customFontBytes);
 
-    const formatDateInput = (input) => {
-      if (!input) return '';
-      const d = new Date(input);
-      if (isNaN(d)) return String(input);
-      return format(d, 'dd/MM/yyyy');
-    };
+    const bodyColor = rgb(25 / 255, 36 / 255, 28 / 255);
+    const darkTeal = rgb(0 / 255, 85 / 255, 87 / 255);
 
-    const certificateNumber = data.certificateNumber || data.certificate_number || '';
-    const fullName = data.fullName || data.full_name || '';
-    const domain = data.domain || data.designation || '';
-    const duration = data.durationText || data.internship_duration || data.duration || '';
-    const startFormatted = formatDateInput(data.startDate || data.start_date || data.start) || '';
-    const endFormatted = formatDateInput(data.endDate || data.end_date || data.end) || '';
-    const issueFormatted = formatDateInput(data.issueDate || data.issue_date || data.issue) || format(new Date(), 'dd/MM/yyyy');
+    const formatDate = (d) =>
+      d && !isNaN(new Date(d)) ? format(new Date(d), "dd/MM/yyyy") : "";
+
+    const normalizeDuration = (d) =>
+      d ? d.replace(/Month/gi, "month") : "";
+
+    const fullName = data.fullName || "Intern Name";
+    const duration = normalizeDuration(data.duration || data.durationText || "");
+    const domain = data.domain || data.designation || "";
+    const startDate = formatDate(data.startDate);
+    const endDate = formatDate(data.endDate);
+    const certificateNumber = data.certificateNumber || "";
     const verifyUrl = data.verifyUrl;
+    const issueFormatted =
+      formatDate(data.issueDate) || format(new Date(), "dd/MM/yyyy");
 
     if (certificateNumber) {
       page.drawText(`CIN No. - ${certificateNumber}`, {
         x: width - 180,
         y: height - 5,
-        size: 10,
-        font: helveticaBold,
-        color: colorHex,
+        size: 8,
+        font: helvetica,
+        color: bodyColor,
       });
     }
 
-    const subtitle = "This certificate is presented to";
-    const subtitleSize = 14;
-    const subtitleWidth = helvetica.widthOfTextAtSize(subtitle, subtitleSize);
+    const subtitle = "This certificate is proudly presented to";
+    const subSize = 14;
+    const subW = helvetica.widthOfTextAtSize(subtitle, subSize);
     page.drawText(subtitle, {
-      x: (width - subtitleWidth) / 2,
+      x: (width - subW) / 2,
       y: height - 205,
-      size: subtitleSize,
+      size: subSize,
       font: helvetica,
-      color: colorHex,
+      color: bodyColor,
     });
 
-    const nameSize = 35;
-    const nameWidth = nameFont.widthOfTextAtSize(fullName || ' ', nameSize);
-    page.drawText(fullName || ' ', {
+    const nameSize = 48;
+    const nameWidth = customFont.widthOfTextAtSize(fullName, nameSize);
+    page.drawText(fullName, {
       x: (width - nameWidth) / 2,
-      y: height - 260,
+      y: height - 255,
       size: nameSize,
-      font: nameFont,
-      color: colorHex,
+      font: customFont,
+      color: darkTeal,
     });
 
-    const segSize = 16;
+    const mainY = height - 305;
     const segs = [
-      { text: 'has successfully completed a ', font: helvetica, bold: false },
-      { text: duration || 'N/A', font: helveticaBold, bold: true },
-      { text: ' internship as a ', font: helvetica, bold: false },
-      { text: domain || 'N/A', font: helveticaBold, bold: true },
-      
+      { t: "has successfully completed a ", b: false },
+      { t: duration + " ", b: true },
+      { t: "internship as a ", b: false },
+      { t: domain + " Intern ", b: true },
     ];
-    let totalWidth = 0;
-    segs.forEach(s => {
-      totalWidth += s.font.widthOfTextAtSize(s.text, segSize);
+
+    let mainWidth = segs.reduce(
+      (a, s) =>
+        a +
+        (s.b
+          ? helveticaBold.widthOfTextAtSize(s.t, 16)
+          : helvetica.widthOfTextAtSize(s.t, 16)),
+      0
+    );
+
+    let mx = (width - mainWidth) / 2;
+
+    segs.forEach((s) => {
+      const f = s.b ? helveticaBold : helvetica;
+      const w = f.widthOfTextAtSize(s.t, 16);
+      page.drawText(s.t, {
+        x: mx,
+        y: mainY,
+        size: 16,
+        font: f,
+        color: bodyColor,
+      });
+      mx += w;
     });
-    let curX = (width - totalWidth) / 2;
-    const lineY = height - 300;
-    for (const s of segs) {
-      page.drawText(s.text, {
-        x: curX,
-        y: lineY,
-        size: segSize,
-        font: s.font,
-        color: colorHex,
-      });
-      curX += s.font.widthOfTextAtSize(s.text, segSize);
-    }
 
-    const dateSegSize = 16;
-    const dateSegs = [
-      { text: ' Intern at ', font: helvetica, bold: false },
-      { text: 'GT Technovation', font: helveticaBold, bold: true },
-      { text: '.', font: helvetica, bold: false },
-      { text: 'Dated from ', font: helvetica, bold: false },
-      { text: startFormatted || 'N/A', font: helveticaBold, bold: true },
-      { text: ' to ', font: helvetica, bold: false },
-      { text: endFormatted || 'N/A', font: helveticaBold, bold: true },
-      { text: '.', font: helvetica, bold: false }
+    const dateSeg = [
+      { t: "at ", b: false },
+      { t: "GT Technovation ", b: true },
+      { t: "from ", b: false },
+      { t: startDate, b: true },
+      { t: " to ", b: false },
+      { t: endDate, b: true },
+      { t: ".", b: false },
     ];
-    let dateTotalWidth = 0;
-    dateSegs.forEach(s => { dateTotalWidth += s.font.widthOfTextAtSize(s.text, dateSegSize); });
-    let dateX = (width - dateTotalWidth) / 2;
-    const dateY = height - 320;
-    for (const s of dateSegs) {
-      page.drawText(s.text, {
-        x: dateX,
-        y: dateY,
-        size: dateSegSize,
-        font: s.font,
-        color: colorHex,
-      });
-      dateX += s.font.widthOfTextAtSize(s.text, dateSegSize);
-    }
 
-    const performance = "During the internship we found them consistent & hardworking. We wish them all the best for their future endeavors.";
-    const maxLineWidth = 600;
-    const paraStartX = (width - maxLineWidth) / 2;
-    let cursorY = height - 345;
-    const words = performance.split(' ');
-    let currentLine = '';
+    let dateWidth = dateSeg.reduce(
+      (a, s) =>
+        a +
+        (s.b
+          ? helveticaBold.widthOfTextAtSize(s.t, 16)
+          : helvetica.widthOfTextAtSize(s.t, 16)),
+      0
+    );
+
+    let dx = (width - dateWidth) / 2;
+
+    dateSeg.forEach((s) => {
+      const f = s.b ? helveticaBold : helvetica;
+      const w = f.widthOfTextAtSize(s.t, 16);
+
+      page.drawText(s.t, {
+        x: dx,
+        y: height - 330,
+        size: 16,
+        font: f,
+        color: bodyColor,
+      });
+      dx += w;
+    });
+
+    const performance =
+      "During the internship, the intern consistently demonstrated strong professionalism, learning capability, and dedication toward assigned responsibilities. Their contribution is sincerely appreciated, and we extend our best wishes for a successful future career.";
+
+    const words = performance.split(" ");
+    let line = "";
+    let py = height - 365;
+    const lh = 18;
+    const maxWidth = 580;
 
     for (let i = 0; i < words.length; i++) {
-      const test = currentLine ? currentLine + ' ' + words[i] : words[i];
-      const testW = helvetica.widthOfTextAtSize(test, 16);
-      if (testW > maxLineWidth) {
-        const lineWidth = helvetica.widthOfTextAtSize(currentLine, 16);
-        const lineX = (width - lineWidth) / 2;
-        page.drawText(currentLine, { 
-          x: lineX, 
-          y: cursorY, 
-          size: 16, 
-          font: helvetica, 
-          color: colorHex
+      const test = line ? line + " " + words[i] : words[i];
+      if (helvetica.widthOfTextAtSize(test, 14) > maxWidth) {
+        page.drawText(line, {
+          x: (width - helvetica.widthOfTextAtSize(line, 14)) / 2,
+          y: py,
+          size: 14,
+          font: helvetica,
+          color: bodyColor,
         });
-        currentLine = words[i];
-        cursorY -= 18;
-      } else {
-        currentLine = test;
-      }
-      if (i === words.length - 1 && currentLine) {
-        const lineWidth = helvetica.widthOfTextAtSize(currentLine, 16);
-        const lineX = (width - lineWidth) / 2;
-        page.drawText(currentLine, { 
-          x: lineX, 
-          y: cursorY, 
-          size: 16, 
-          font: helvetica, 
-          color: colorHex
-        });
-        cursorY -= 18;
-      }
+        line = words[i];
+        py -= lh;
+      } else line = test;
     }
 
-    page.drawText(`Issue Date: ${issueFormatted}`, {
-      x: 80,
-      y: 15,
-      size: 10,
-      font: helveticaBold,
-      color: colorHex,
+    page.drawText(line, {
+      x: (width - helvetica.widthOfTextAtSize(line, 14)) / 2,
+      y: py,
+      size: 14,
+      font: helvetica,
+      color: bodyColor,
     });
 
-    if (verifyUrl) {
-      try {
-        const qrPng = qr.imageSync(verifyUrl, { type: 'png', size: 6 });
-        const qrImage = await pdfDoc.embedPng(qrPng);
-        
-        const verifyText = "Verify";
-        const verifyTextWidth = helveticaBold.widthOfTextAtSize(verifyText, 9);
-        page.drawText(verifyText, {
-          x: width - 110 + (70 - verifyTextWidth) / 2,
-          y: 105,
-          size: 9,
-          font: helveticaBold,
-          color: colorHex,
-        });
-        
-        page.drawImage(qrImage, { 
-          x: width - 110, 
-          y: 30, 
-          width: 70, 
-          height: 70 
-        });
-      } catch (err) {
-        console.log('QR Error:', err);
-      }
+    if (certificateNumber) {
+      const cinTxt = `Certificate No.: ${certificateNumber}`;
+      page.drawText(cinTxt, {
+        x: (width - helveticaBold.widthOfTextAtSize(cinTxt, 12)) / 2,
+        y: 120,
+        size: 12,
+        font: helveticaBold,
+        color: bodyColor,
+      });
     }
 
-    const certificatesFolder = path.join(PDF_FOLDER, "certificates");
-    if (!fs.existsSync(certificatesFolder)) fs.mkdirSync(certificatesFolder, { recursive: true });
+    if (verifyUrl) {
+      const qrImg = await pdfDoc.embedPng(
+        qr.imageSync(verifyUrl, { type: "png", size: 6 })
+      );
+      page.drawImage(qrImg, {
+        x: (width - 70) / 2,
+        y: 40,
+        width: 70,
+        height: 70,
+      });
+    }
 
-    const outputFilename = certificateNumber ? `${certificateNumber}_certificate.pdf` : `${data.uniqueId || data.unique_id || 'certificate'}_certificate.pdf`;
-    const outputPath = path.join(certificatesFolder, outputFilename);
-    const pdfBytes = await pdfDoc.save();
-    fs.writeFileSync(outputPath, pdfBytes);
+    page.drawText(`Issued on: ${issueFormatted}`, {
+      x: 80,
+      y: 20,
+      size: 10,
+      font: helveticaBold,
+      color: bodyColor,
+    });
+
+    const outputPath = path.join(
+      PDF_FOLDER,
+      `${certificateNumber || "certificate"}.pdf`
+    );
+
+    fs.writeFileSync(outputPath, await pdfDoc.save());
 
     return outputPath;
   } catch (error) {
-    console.error('Error generating certificate PDF:', error);
+    console.error("PDF Generation Error:", error);
     return null;
   }
 }
-
 
 module.exports = {
   generateOfferLetterPDF,
