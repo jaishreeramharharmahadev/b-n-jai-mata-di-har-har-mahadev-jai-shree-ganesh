@@ -245,8 +245,6 @@ async function generateOfferLetterFromScratch(data) {
   return outputPath;
 }
 
-
-
 async function generateCertificatePDF(data) {
   try {
     const TEMPLATE_FOLDER = path.join(__dirname, "templates");
@@ -272,52 +270,46 @@ async function generateCertificatePDF(data) {
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    const customFontPath = path.join(
-      FONT_FOLDER,
-      "GreatVibes-Wmr4.ttf"
-    );
+    const customFontPath = path.join(FONT_FOLDER, "GreatVibes-Wmr4.ttf");
     const customFontBytes = fs.readFileSync(customFontPath);
     const customFont = await pdfDoc.embedFont(customFontBytes);
 
     const bodyColor = rgb(25 / 255, 36 / 255, 28 / 255);
     const darkTeal = rgb(0 / 255, 85 / 255, 87 / 255);
 
+    const parseToDate = (d) => {
+      if (!d) return null;
+      if (d instanceof Date) return d;
+      const date = new Date(d);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
     const formatDate = (d) => {
-      if (!d) return "";
-
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d;
-
-      let date = new Date(d);
-
-      if (isNaN(date.getTime())) {
-        const parts = d.split(/[-/]/);
-        if (parts.length === 3) {
-          if (parts[0].length === 4) {
-            date = new Date(parts[0], parts[1] - 1, parts[2]);
-          } else {
-            date = new Date(parts[2], parts[1] - 1, parts[0]);
-          }
-        }
-      }
-
-      if (isNaN(date.getTime())) return "";
-
+      const date = parseToDate(d);
+      if (!date) return "";
       return format(date, "dd/MM/yyyy");
     };
 
     const normalizeDuration = (d) => (d ? d.replace(/Month/gi, "month") : "");
 
-    const fullName = data.fullName || "Intern Name";
-    const duration = normalizeDuration(
-      data.duration || data.durationText || ""
-    );
+    const formatName = (name) =>
+      name
+        .trim()
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+
+    const fullName = formatName(data.fullName || "Intern Name");
+    const duration = normalizeDuration(data.durationText || data.duration || "");
     const domain = data.domain || data.designation || "";
     const startDate = formatDate(data.startDate);
     const endDate = formatDate(data.endDate);
     const certificateNumber = data.certificateNumber || "";
     const verifyUrl = data.verifyUrl;
-    const issueFormatted =
-      formatDate(data.issueDate) || format(new Date(), "dd/MM/yyyy");
+
+    let issueDate = parseToDate(data.endDate || new Date());
+    if (issueDate) issueDate.setDate(issueDate.getDate() + 1);
+    const issueFormatted = formatDate(issueDate);
 
     if (certificateNumber) {
       page.drawText(`CIN No. - ${certificateNumber}`, {
@@ -368,7 +360,6 @@ async function generateCertificatePDF(data) {
     );
 
     let mx = (width - mainWidth) / 2;
-
     segs.forEach((s) => {
       const f = s.b ? helveticaBold : helvetica;
       const w = f.widthOfTextAtSize(s.t, 16);
@@ -402,11 +393,9 @@ async function generateCertificatePDF(data) {
     );
 
     let dx = (width - dateWidth) / 2;
-
     dateSeg.forEach((s) => {
       const f = s.b ? helveticaBold : helvetica;
       const w = f.widthOfTextAtSize(s.t, 16);
-
       page.drawText(s.t, {
         x: dx,
         y: height - 330,

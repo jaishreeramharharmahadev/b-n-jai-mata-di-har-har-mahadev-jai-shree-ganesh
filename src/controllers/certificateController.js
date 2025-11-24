@@ -33,16 +33,14 @@ async function generateForApplicantService(uniqueId) {
     fullName: applicant.fullName,
     certificateNumber,
     domain: applicant.domain || "",
-    startDate: applicant.startDate
-      ? new Date(applicant.startDate).toLocaleDateString()
-      : "",
-    endDate: applicant.endDate
-      ? new Date(applicant.endDate).toLocaleDateString()
-      : "",
+    startDate: applicant.startDate ? new Date(applicant.startDate) : null,
+    endDate: applicant.endDate ? new Date(applicant.endDate) : null,
     durationText: applicant.duration || "",
-    issueDate: new Date().toLocaleDateString(),
+    issueDate: null,
     directorName: process.env.CERT_DIRECTOR_NAME || "Priyanshu Tiwari",
-    verifyUrl: (process.env.CLIENT_URL || "").replace(/\/$/, "") + `/verify/${certificateNumber}`,
+    verifyUrl:
+      (process.env.CLIENT_URL || "").replace(/\/$/, "") +
+      `/verify/${certificateNumber}`,
   };
 
   let returned = await generateCertificatePDF(payload);
@@ -64,7 +62,10 @@ async function generateForApplicantService(uniqueId) {
         fs.copyFileSync(savePath, destPath);
         savePath = destPath;
       } catch (e) {
-        console.warn("Could not copy generated PDF to certificates folder:", e.message);
+        console.warn(
+          "Could not copy generated PDF to certificates folder:",
+          e.message
+        );
       }
     }
   } else {
@@ -97,24 +98,17 @@ async function generateForApplicantService(uniqueId) {
     html: `
     <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
       <p style="font-size:16px;">Dear ${applicant.fullName},</p>
-
       <p>We are pleased to inform you that you have successfully completed your internship at <strong>GT Technovation</strong>. Your official internship completion certificate has been attached with this email.</p>
-
       <p>
         <strong>Certificate Number:</strong> ${certificateNumber}<br/>
         <strong>Domain:</strong> ${applicant.domain}
       </p>
-
-      <p>We appreciate your dedication, hard work, and commitment throughout the internship period. We hope the experience gained during this program helps you in your future academic and professional journey.</p>
-
       <br/>
-
       <p>Wishing you continued success ahead.</p>
-
       <p>Warm regards,<br/>
       <strong>GT Technovation HR Team</strong></p>
     </div>
-  `,
+    `,
     attachments: [
       {
         filename: filename,
@@ -163,15 +157,23 @@ async function downloadByUniqueId(req, res) {
 
     const cert = await Certificate.findOne({ applicant: applicant._id });
     if (!cert || !cert.filePath) {
-      console.warn(`[download] Certificate doc not found for applicant=${uniqueId}`);
+      console.warn(
+        `[download] Certificate doc not found for applicant=${uniqueId}`
+      );
       return res.status(404).json({ message: "Certificate not available" });
     }
 
     // Resolve absolute path
-    const filePath = path.isAbsolute(cert.filePath) ? cert.filePath : path.join(__dirname, "..", cert.filePath);
+    const filePath = path.isAbsolute(cert.filePath)
+      ? cert.filePath
+      : path.join(__dirname, "..", cert.filePath);
     if (!fs.existsSync(filePath)) {
-      console.warn(`[download] Certificate file missing on disk. expected=${filePath}`);
-      return res.status(404).json({ message: "Certificate file missing on server" });
+      console.warn(
+        `[download] Certificate file missing on disk. expected=${filePath}`
+      );
+      return res
+        .status(404)
+        .json({ message: "Certificate file missing on server" });
     }
 
     const stat = fs.statSync(filePath);
@@ -181,7 +183,9 @@ async function downloadByUniqueId(req, res) {
     res.setHeader("Content-Length", stat.size);
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+      `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(
+        filename
+      )}`
     );
 
     const stream = fs.createReadStream(filePath);
@@ -189,12 +193,15 @@ async function downloadByUniqueId(req, res) {
 
     stream.on("error", (err) => {
       console.error("[download] stream error:", err);
-      if (!res.headersSent) return res.status(500).json({ message: "Error streaming file" });
+      if (!res.headersSent)
+        return res.status(500).json({ message: "Error streaming file" });
       res.destroy();
     });
   } catch (err) {
     console.error("downloadByUniqueId error:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
   }
 }
 
@@ -202,12 +209,17 @@ async function verify(req, res) {
   try {
     let certificateNumber = req.params.certificateNumber;
     if (!certificateNumber)
-      return res.status(400).json({ valid: false, message: "certificateNumber required" });
+      return res
+        .status(400)
+        .json({ valid: false, message: "certificateNumber required" });
     certificateNumber = certificateNumber.toString().trim();
     const cert = await Certificate.findOne({
       certificateNumber: { $regex: `^${certificateNumber}$`, $options: "i" },
     }).populate("applicant", "uniqueId fullName email");
-    if (!cert) return res.status(404).json({ valid: false, message: "Certificate not found" });
+    if (!cert)
+      return res
+        .status(404)
+        .json({ valid: false, message: "Certificate not found" });
     return res.json({
       valid: true,
       certificateNumber: cert.certificateNumber,
