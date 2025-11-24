@@ -1,3 +1,14 @@
 node_modules/ 
 .env 
 test_mail.js
+
+src/scripts
+
+src/data
+
+src/uploads
+
+src/generated_certificates
+
+generated_pdfs
+
