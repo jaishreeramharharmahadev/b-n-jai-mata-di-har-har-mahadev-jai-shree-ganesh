@@ -31,4 +31,10 @@ function parseDurationToDays(durationStr) {
   return 0;
 }
 
-module.exports = { addDays, addMonths, parseDurationToDays };
+function getISTMidnight(date = new Date()) {
+  const ist = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  ist.setHours(0, 0, 0, 0);
+  return ist;
+}
+
+module.exports = { addDays, addMonths, parseDurationToDays, getISTMidnight };

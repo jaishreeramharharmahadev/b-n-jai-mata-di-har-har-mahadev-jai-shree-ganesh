@@ -2,7 +2,8 @@ const { addDays } = require("./dateHelpers");
 
 function ensureLearningPathState(applicant, { weekDurationDays = 7 } = {}) {
   let changed = false;
-  const now = new Date();
+  // const now = new Date();
+  const now = getISTMidnight(new Date());
   const lp = applicant.learningPath || [];
   const startDate = applicant.startDate ? new Date(applicant.startDate) : null;
 

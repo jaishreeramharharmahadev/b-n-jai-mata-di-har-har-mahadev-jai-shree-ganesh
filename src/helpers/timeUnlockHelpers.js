@@ -1,14 +1,17 @@
-const { addDays } = require("./dateHelpers");
+// const { addDays } = require("./dateHelpers");
+const { addDays, getISTMidnight } = require("./dateHelpers");
 
 function ensureTimeBasedUnlocks(applicant, { weekDurationDays = 7 } = {}) {
-  const now = new Date();
+  // const now = new Date();
+  const now = getISTMidnight(new Date());
   let changed = false;
   const lp = applicant.learningPath || [];
   if (!lp.length || !applicant.startDate) return changed;
 
   for (let i = 0; i < lp.length; i++) {
     const week = lp[i];
-    const unlockAt = addDays(applicant.startDate, i * weekDurationDays);
+    // const unlockAt = addDays(applicant.startDate, i * weekDurationDays);
+    const unlockAt = getISTMidnight(addDays(applicant.startDate, i * weekDurationDays));
     if (!week.unlockDate || new Date(week.unlockDate).getTime() !== unlockAt.getTime()) {
       week.unlockDate = unlockAt;
       changed = true;
