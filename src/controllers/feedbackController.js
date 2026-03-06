@@ -86,9 +86,19 @@ async function checkAvailability(req, res) {
       available = true;
     }
 
+    // return res.json({
+    //   ok: true,
+    //   available,
+    //   nowIST,
+    //   startFeedbackIST,
+    //   endDateIST: endIST,
+    //   uniqueId: applicant.uniqueId,
+    //   feedbackSubmitted: applicant.feedbackSubmitted,
+    // });
     return res.json({
       ok: true,
       available,
+      startDate: applicant.startDate,
       nowIST,
       startFeedbackIST,
       endDateIST: endIST,
