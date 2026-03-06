@@ -80,10 +80,11 @@ async function checkAvailability(req, res) {
     const startFeedbackIST = new Date(endIST);
     startFeedbackIST.setDate(endIST.getDate() - 10);
 
-    const available =
-      nowIST >= startFeedbackIST &&
-      nowIST <= endIST &&
-      !applicant.feedbackSubmitted;
+    let available = false;
+
+    if (applicant.startDate && !applicant.feedbackSubmitted) {
+      available = true;
+    }
 
     return res.json({
       ok: true,
