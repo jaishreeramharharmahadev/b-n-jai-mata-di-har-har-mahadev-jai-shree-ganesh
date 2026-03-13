@@ -153,17 +153,56 @@ async function generateForApplicantRoute(req, res) {
 async function downloadByUniqueId(req, res) {
   try {
     const applicant = await Applicant.findOne({ uniqueId: req.params.uniqueId });
-    if (!applicant) return res.status(404).json({ message: "Not found" });
+    if (!applicant) {
+      return res.status(404).json({ message: "Applicant not found" });
+    }
 
-    const cert = await Certificate.findOne({ applicant: applicant._id });
-    if (!cert) return res.status(404).json({ message: "Certificate not available" });
+    let cert = await Certificate.findOne({ applicant: applicant._id });
 
-    res.download(cert.filePath);
-  } catch {
-    return res.status(500).json({ message: "Unexpected server issue" });
+    if (!cert) {
+      return res.status(404).json({ message: "Certificate not generated yet" });
+    }
+
+    // If PDF file missing → regenerate using SAME certificate data
+    if (!cert.filePath || !fs.existsSync(cert.filePath)) {
+      console.log("PDF missing, regenerating...");
+
+      const payload = {
+        fullName: cert.fullName,
+        certificateNumber: cert.certificateNumber, // SAME NUMBER
+        domain: cert.domain,
+        startDate: cert.startDate,
+        endDate: cert.endDate,
+        durationText: cert.durationText,
+        issueDate: cert.issueDate,
+        directorName: process.env.CERT_DIRECTOR_NAME || "Priyanshu Tiwari",
+        verifyUrl:
+          (process.env.CLIENT_URL || "").replace(/\/$/, "") +
+          `/verify/${cert.certificateNumber}`,
+      };
+
+      const returned = await generateCertificatePDF(payload);
+
+      const filename = `${cert.certificateNumber}_certificate.pdf`;
+      const savePath = path.join(CERT_DIR, filename);
+
+      if (Buffer.isBuffer(returned)) {
+        fs.writeFileSync(savePath, returned);
+      } else {
+        fs.copyFileSync(returned, savePath);
+      }
+
+      cert.filePath = savePath;
+      await cert.save();
+    }
+
+    return res.download(cert.filePath, path.basename(cert.filePath));
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
   }
 }
-
 // Secure Verify API ✔ SAFE NO BACKEND ERROR LEAKS
 async function verify(req, res) {
   try {
