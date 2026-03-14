@@ -84,6 +84,7 @@ async function checkAvailability(req, res) {
       available,
       nowIST,
       startDateIST: startIST,
+      endDate: applicant.endDate,
       uniqueId: applicant.uniqueId,
       feedbackSubmitted: applicant.feedbackSubmitted,
     });
