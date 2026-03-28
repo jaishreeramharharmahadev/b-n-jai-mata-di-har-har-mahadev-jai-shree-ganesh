@@ -103,6 +103,21 @@ async function generateForApplicantService(uniqueId) {
     ],
   });
 
+  // Email to Admin for record-keeping
+  await sendEmail({
+    to: process.env.ADMIN_EMAIL,
+    subject: `Certificate — ${applicant.fullName || ""} ${applicant.domain || ""}`,
+    html: `
+    <p>Dear ${applicant.fullName},</p>
+    <p>Congratulations on completing your internship at <strong>GT Technovation</strong>.</p>
+    <p>Your certificate has been attached below.</p>
+    <p><strong>Certificate Number:</strong> ${certificateNumber}</p>
+    `,
+    attachments: [
+      { filename, content: pdfBase64, contentType: "application/pdf" },
+    ],
+  });
+
   certDoc.sentAt = new Date();
   await certDoc.save();
 
