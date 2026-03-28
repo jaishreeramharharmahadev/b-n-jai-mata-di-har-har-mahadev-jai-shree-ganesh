@@ -55,7 +55,7 @@ async function generateOfferLetterPDF(data) {
       color: rgb(0, 0, 0),
     });
 
-    firstPage.drawText('Location: Online(Remote)', {
+    firstPage.drawText('Location: Online (Remote)', {
       x: 30,
       y: height - 240,
       size: 10,
@@ -92,7 +92,7 @@ async function generateOfferLetterPDF(data) {
     const contentLines = [
       `Dear ${data.full_name},`,
       "",
-      `Congratulations! We are excited to offer you the position of ${data.domain} at GT Technovation.`,
+      `Congratulations! We are excited to offer you the position of ${data.domain} Intern at GT Technovation.`,
       "Your application demonstrated exceptional potential and alignment with our organization's values and objectives.",
       "",
       "This internship opportunity is designed to provide you with hands-on experience in real-world projects while working",
@@ -100,10 +100,10 @@ async function generateOfferLetterPDF(data) {
       "professional development and career growth.",
       "",
       `During your ${data.internship_duration} internship period, you will have the opportunity to work on challenging projects and contribute`,
-      "to meaningful solutions. We believe that your unique perspective and skills will be valuable assets to our team and",
-      "and we look forward to the innovative contributions we know you will make.",
+      "to meaningful solutions. We believe that your unique perspective and skills will be valuable assets to our team, and",
+      "and we look forward to the innovative contributions you will make.",
       "",
-      "Welcome to GT Technovation Innovations! We look forward to seeing the great work you will accomplish.",
+      "Welcome to GT Technovation! We look forward to seeing the great work you will accomplish.",
     ];
 
     contentLines.forEach(line => {
@@ -133,7 +133,7 @@ async function generateOfferLetterPDF(data) {
       "• Participate in project planning and development activities",
       "• Professional conduct and performance expectations must be maintained",
       "• All company policies and procedures must be adhered to during the internship period",
-      "• Successful completion may lead to certificate of completion and potential references",
+      "• Successful completion may lead to a certificate of completion and potential references",
       "• Provide regular progress updates to your supervisor"
     ];
 
