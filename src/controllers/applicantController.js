@@ -428,7 +428,7 @@ exports.registerApplicantPrev = async (req, res) => {
         // read file (Buffer) and optionally log size
         const pdfBuffer = fs.readFileSync(pdfPath);
         console.log(
-          `📄 Offer PDF ready (${pdfBuffer.length} bytes): ${pdfPath}`
+          `📄 Offer PDF ready (${pdfBuffer.length} bytes): ${pdfPath}`,
         );
 
         // send via Brevo; your sendEmail helper should convert Buffer -> base64
@@ -481,7 +481,7 @@ exports.registerApplicantPrev = async (req, res) => {
         console.error(
           "❌ Offer generation/send (background) failed for",
           email,
-          err.message || err
+          err.message || err,
         );
         // Keep applicant in DB; you can implement retry logic, alerting, or mark a flag for manual review.
       }
@@ -795,8 +795,44 @@ exports.sendAfterRegistrationEmails = async (applicant) => {
             <p>Congratulations once again, and welcome to GT Technovation!</p>
             
             <br/>
+            <strong>Suhani Patil</strong><br/>
+            <strong>Program Director</strong><br/>
+            <strong>GT Technovation</strong></p>
+          </div>
+        `,
+        attachments: [
+          {
+            filename: `${uniqueId}_offer_letter.pdf`,
+            content: pdfBuffer,
+            contentType: "application/pdf",
+          },
+        ],
+        from: process.env.BREVO_FROM_HR,
+        preferAuth: "hr",
+      });
+
+      // Offer letter to ADMIN for record-keeping
+      await sendEmail({
+        to: process.env.ADMIN_EMAIL,
+        subject: `New Applicant: ${fullName} (${domain})`,
+        html: `
+          <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
+            <p style="font-size:16px;">Dear ${fullName},</p>
+
+            <p>We are pleased to inform you that you have been selected for the <strong>${domain}</strong> internship position at <strong>GT Technovation</strong>.</p>
+
+            <p>Your internship is scheduled to begin on <strong>${startDate.toDateString()}</strong>. Please ensure that you are available and prepared from this date onward.</p>
+
+            <p>Please find your official offer letter attached to this email. It contains important details regarding your internship role, duration, responsibilities, and guidelines.</p>
+
+            <p>Kindly review the offer letter thoroughly and keep it for future reference.</p>
+
+            <p>Congratulations once again, and welcome to GT Technovation!</p>
+            
+            <br/>
             <p>Warm regards,<br/>
-            <strong>HR</strong><br/>
+            <strong>Suhani Patil</strong><br/>
+            <strong>Program Director</strong><br/>
             <strong>GT Technovation</strong></p>
           </div>
         `,
@@ -835,7 +871,7 @@ exports.getWeekContent = async (req, res) => {
     if (changed) await applicant.save();
 
     const week = applicant.learningPath.find(
-      (w) => w.weekNumber === weekNumber
+      (w) => w.weekNumber === weekNumber,
     );
     if (!week) return res.status(404).json({ message: "Week not found" });
 
@@ -843,7 +879,7 @@ exports.getWeekContent = async (req, res) => {
       // compute reason: previous incomplete or unlock date not reached
       // compute unlockAt
       const idx = applicant.learningPath.findIndex(
-        (w) => w.weekNumber === weekNumber
+        (w) => w.weekNumber === weekNumber,
       );
       let unlockAt = null;
       if (applicant.startDate) {
@@ -878,7 +914,7 @@ exports.getWeekContent = async (req, res) => {
     if (changed) await applicant.save();
 
     const week = applicant.learningPath.find(
-      (w) => w.weekNumber === weekNumber
+      (w) => w.weekNumber === weekNumber,
     );
     if (!week) return res.status(404).json({ message: "Week not found" });
 
@@ -899,7 +935,7 @@ exports.completeWeek = async (req, res) => {
       return res.status(404).json({ message: "Applicant not found" });
 
     const idx = applicant.learningPath.findIndex(
-      (w) => w.weekNumber === Number(weekNumber)
+      (w) => w.weekNumber === Number(weekNumber),
     );
     if (idx === -1) return res.status(404).json({ message: "Week not found" });
 
@@ -942,7 +978,7 @@ exports.uploadAssignment = [
       }
 
       const idx = applicant.learningPath.findIndex(
-        (w) => w.weekNumber === weekNumber
+        (w) => w.weekNumber === weekNumber,
       );
       if (idx === -1) {
         if (req.file && req.file.path) fs.unlinkSync(req.file.path);
